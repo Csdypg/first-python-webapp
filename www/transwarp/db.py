@@ -171,6 +171,8 @@ def create_engine(user, password, database, host='127.0.0.1', port=3306, **kw):
 		params[k] = kw.pop(k, v)
 	params.update(kw)
 	params['buffered'] = True
+	for ke, va in params.iteritems():
+		print ke, va
 	engine = _Engine(lambda: mysql.connector.connect(**params))
 	#test connection
 	logging.info('Init mysql engine <%s> ok.' % hex(id(engine)))	
@@ -489,7 +491,7 @@ def update(sql, *args):
 
 if __name__ == '__main__':
 	logging.basicConfig(level = logging.DEBUG)
-	create_engine('root', '123456', 'test')
+	create_engine('root', '123456', 'test', port=3306)
 	update('drop table if exists user')
 	update('create table user (id int primary key, name text, email text, passwd text, last_modified real)')
 	import doctest

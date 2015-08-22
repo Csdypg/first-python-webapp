@@ -7,7 +7,7 @@ configs = {
 		'port':3306,
 		'user':'www-data',
 		'password':'www-data',
-		'data-base':'awesome'
+		'database':'awesome'
 	},
 	'session':{
 		'secret':'AwEsOmE'

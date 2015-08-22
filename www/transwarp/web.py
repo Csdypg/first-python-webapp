@@ -1349,9 +1349,8 @@ class WSGIApplication(object):
 
     def _check_not_running(self):
         if self._running:
-            raise RuntimeError('Cannot modify WSGIApplicaiton when running.')
+            raise RuntimeError('Cannot modify WSGIApplication when running.')
 
-    # 设置Template引擎:
     @property
     def template_engine(self):
         return self._template_engine
@@ -1363,16 +1362,15 @@ class WSGIApplication(object):
 
     def add_module(self, mod):
         self._check_not_running()
-        m = mod if type(mod) == types.ModuleType else _load_module(mod)
-        logging.info('Add Module: %s'  % m.__name__)
+        m = mod if type(mod)==types.ModuleType else _load_module(mod)
+        logging.info('Add module: %s' % m.__name__)
         for name in dir(m):
             fn = getattr(m, name)
             if callable(fn) and hasattr(fn, '__web_route__') and hasattr(fn, '__web_method__'):
                 self.add_url(fn)
 
-	# 添加一个URL定义:
-	def add_url(self, func):
-		self._check_not_running()
+    def add_url(self, func):
+        self._check_not_running()
         route = Route(func)
         if route.is_static:
             if route.method=='GET':
@@ -1386,50 +1384,16 @@ class WSGIApplication(object):
                 self._post_dynamic.append(route)
         logging.info('Add route: %s' % str(route))
 
-
-	# 添加一个Interceptor定义:
-	def add_interceptor(self, func):
-		self._check_not_running
-        self._interceptors.append(func)
-        logging.info('Add interceptro: %s' % str(func))
-
-
-
-	
-	# 返回WSGI处理函数:
-    def get_wsgi_application(self, debug=False):
+    def add_interceptor(self, func):
         self._check_not_running()
-        if debug:
-            self._get_dynamic.append(StaticFileRoute)
-        self.running=True
+        self._interceptors.append(func)
+        logging.info('Add interceptor: %s' % str(func))
 
-        _application = Dict(document_root=self._document_root)
-
-        def fn_route():
-            request_method = ctx.request.request_method
-            path_info = ctx.request.path_info
-            if request_method=='GET':
-                fn = self._get_static.get(path_info, None)
-                if fn:
-                    return fn()
-                for fn in self._get_dynamic:
-                    args = fn.match(path_info)
-                    if args:
-                        return fn(*args)
-                raise notfound()
-
-            if request_method == 'POST':
-                fn = self._post_static.get(path_info, None)
-                if fn:
-                    return fn()
-                for fn in self._post_dynamic:
-                    args = fn.match(path_info)
-                    if args:
-                        return fn(*args)
-                raise notfound()
-            raise badrequest()
-
-        fn_exec = _build_interceptor_chain(fn_route, *self._interceptors)
+    def run(self, port=9000, host='127.0.0.1'):
+        from wsgiref.simple_server import make_server
+        logging.info('application (%s) will start at %s:%s...' % (self._document_root, host, port))
+        server = make_server(host, port, self.get_wsgi_application(debug=True))
+        server.serve_forever()
 
     def get_wsgi_application(self, debug=False):
         self._check_not_running()
@@ -1507,13 +1471,6 @@ class WSGIApplication(object):
 
         return wsgi
 
-
-	# 开发模式下直接启动服务器:
-    def run(self, port=9000, host='127.0.0.1'):
-        from wsgiref.simple_server import make_server
-        logging.info('application (%s) will start at %s:%s...' % (self._document_root, host, port))
-        server = make_server(host, port, self.get_wsgi_application(debug=True))
-        server.server_forever()
 
 if __name__=='__main__':
     sys.path.append('.')
