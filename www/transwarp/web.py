@@ -558,8 +558,8 @@ class StaticFileRoute(object):
         return None
 
     def __call__(self, *args):
-        fpath = os.path.join(ctx.application.document_roont, args[0])
-        if not os.path.isFile(fpath):
+        fpath = os.path.join(ctx.application.document_root, args[0])
+        if not os.path.isfile(fpath):
             raise notfound();
         fext = os.path.splitext(fpath)[1]
         ctx.response.content_type = mimetypes.types_map.get(fext.lower(), 'application/octet-stream')
@@ -1178,7 +1178,7 @@ class Jinja2TemplateEngine(TemplateEngine):
 
 def _default_error_handler(e, start_response, is_debug):
     if isinstance(e, HttpError):
-        logging.info('HttpError: %s' % e.status)
+        logging.debug('HttpError: %s' % e.status)
         headers = e.headers[:]
         headers.append('Content-Type','text/html')
         start_response(e.status, headers)
@@ -1214,7 +1214,7 @@ def view(path):
         def _wrapper(*args, **kw):
             r = func(*args, **kw)
             if isinstance(r, dict):
-                logging.info('return Template.')
+                logging.debug('return Template.')
                 return Template(path, **r)
             raise ValueError('Expect return a dict when using @view() decorator.')
         return _wrapper
@@ -1246,7 +1246,9 @@ def interceptor(pattern='/'):
     return _decorator
 
 def _build_interceptor_fn(func, next):
+    @functools.wraps(func)
     def _wrapper():
+        logging.debug('no @functools.wraps(func)')
         if func.__interceptor__(ctx.request.path_info):
             return func(next)
         else:
@@ -1363,7 +1365,7 @@ class WSGIApplication(object):
     def add_module(self, mod):
         self._check_not_running()
         m = mod if type(mod)==types.ModuleType else _load_module(mod)
-        logging.info('Add module: %s' % m.__name__)
+        logging.debug('Add module: %s' % m.__name__)
         for name in dir(m):
             fn = getattr(m, name)
             if callable(fn) and hasattr(fn, '__web_route__') and hasattr(fn, '__web_method__'):
@@ -1382,16 +1384,16 @@ class WSGIApplication(object):
                 self._get_dynamic.append(route)
             if route.method=='POST':
                 self._post_dynamic.append(route)
-        logging.info('Add route: %s' % str(route))
+        logging.debug('Add route: %s' % str(route))
 
     def add_interceptor(self, func):
         self._check_not_running()
         self._interceptors.append(func)
-        logging.info('Add interceptor: %s' % str(func))
+        logging.debug('Add interceptor: %s' % str(func))
 
     def run(self, port=9000, host='127.0.0.1'):
         from wsgiref.simple_server import make_server
-        logging.info('application (%s) will start at %s:%s...' % (self._document_root, host, port))
+        logging.debug('application (%s) will start at %s:%s...' % (self._document_root, host, port))
         server = make_server(host, port, self.get_wsgi_application(debug=True))
         server.serve_forever()
 
@@ -1409,11 +1411,14 @@ class WSGIApplication(object):
             if request_method=='GET':
                 fn = self._get_static.get(path_info, None)
                 if fn:
+                    logging.debug('fn is get_static: %s' % str(fn))
                     return fn()
                 for fn in self._get_dynamic:
                     args = fn.match(path_info)
+                    logging.debug('fn is get dynamic %s' % str(fn))
+                    logging.debug('fn args: %s' % str(args))
                     if args:
-                        return fn(*args)
+                        return fn(args)
                 raise notfound()
             if request_method=='POST':
                 fn = self._post_static.get(path_info, None)
@@ -1433,7 +1438,9 @@ class WSGIApplication(object):
             ctx.request = Request(env)
             response = ctx.response = Response()
             try:
+                logging.debug('begin fn_exec()')
                 r = fn_exec()
+                logging.debug('end fn_exec()')
                 if isinstance(r, Template):
                     r = self._template_engine(r.template_name, r.model)
                 if isinstance(r, unicode):

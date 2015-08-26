@@ -147,7 +147,7 @@ class ModelMetaclass(type):
 		else:
 			logging.warning('Redefine class %s' % name)
 
-		logging.info('Scan ORMmapping %s...' % name)
+		logging.debug('Scan ORMmapping %s...' % name)
 		mappings = dict()
 		primary_key = None
 
@@ -155,7 +155,7 @@ class ModelMetaclass(type):
 			if isinstance(v, Field):
 				if not v.name:
 					v.name = k
-				logging.info('Found mapping: %s => %s' % (k,v))
+				logging.debug('Found mapping: %s => %s' % (k,v))
 				#check duplicate primary key:
 				if v.primary_key:
 					if primary_key:
