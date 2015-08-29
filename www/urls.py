@@ -11,7 +11,7 @@ import hashlib
 import logging
 from transwarp.web import get, post, ctx, view, interceptor, seeother, notfound
 from models import User, Blog, Comment
-from apis import api, APIError, APIValueError, APIPermissionError, APIResourceNotFoundError
+from apis import api, APIError, APIValueError, APIPermissionError, APIResourceNotFoundError,Page
 from config import configs
 
 _COOKIE_NAME = 'awesession'
@@ -52,6 +52,22 @@ def check_admin():
 		return 
 	raise APIPermissionError('No permission!');
 
+
+def _get_page_index():
+	page_index = 1
+	try:
+		page_index = int(ctx.request.get('page_index', '1'))
+	except ValueError:
+		pass 
+	return page_index
+
+def _get_blogs_by_page():
+	total = Blog.count_all()
+	page = Page(total, _get_page_index())
+	blogs = Blog.find_by('order by created_at desc limit ?,?',page.offset, page.limit)
+	return blogs, page
+
+
 @interceptor('/')
 def user_interceptor(next):
 	logging.debug('Try to bind user from session cookie...')
@@ -72,23 +88,28 @@ def manage_interceptor(next):
 		return next()
 	raise seeother('/signin')
 
+
+#index page
 @view('blogs.html')
 @get('/')
 def index():
     blogs = Blog.find_all()
     return dict(blogs=blogs, user=ctx.request.user)
 
+#show signin page
 @view('signin.html')
 @get('/signin')
 def signin():
 	return dict()
 
+#signout operation
 @get('/signout')
 def signout():
 	ctx.response.delete_cookie(_COOKIE_NAME)
 	print(ctx.response._cookies)
 	raise seeother('/')
 
+#validate user signin
 @api
 @post('/api/authenticate')
 def authenticate():
@@ -109,12 +130,12 @@ def authenticate():
     return user
 
 
-
+#re constans
 _RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
 _RE_MD5 = re.compile(r'^[0-9a-f]{32}$')
 
 
-
+#user register operation
 @api
 @post('/api/users')
 def register_user():
@@ -138,10 +159,57 @@ def register_user():
 	ctx.response.set_cookie(_COOKIE_NAME, cookie)
 	return user
 
+#show register page
 @view('/register.html')
 @get('/register')
 def register():
 	return dict()
+
+#show blog edit page
+@view('manage_blog_edit.html')
+@get('/manage/blogs/create')
+def manage_blogs_create():
+	return dict(id=None, action='/api/blogs', redirect='/manage/blogs', user=ctx.request.user)
+
+#show blog list page
+@view('manage_blog_list.html')
+@get('/manage/blogs')
+def manage_blogs():
+	return dict(page_index=_get_page_index(), user=ctx.request.user)
+
+#api return blogs,page  data by page
+@api
+@get('/api/blogs')
+def api_get_blogs():
+	format = ctx.request.get('format', '')
+	blogs,page = _get_blogs_by_page()
+	if format=='html':
+		for blog in blogs:
+			blog.content = markdown2.markdown(blog.content)
+	return dict(blogs=blogs, page=page)
+
+#api blog submit operation
+@api
+@post('/api/blogs')
+def api_create_blog():
+	check_admin()
+	i = ctx.request.input(name='', summary='', content='')
+	name = i.name.strip()
+	summary = i.summary.strip()
+	content = i.content.strip()
+
+	if not name:
+		raise APIValueError('name', 'name cannot be empty!')
+	if not summary:
+		raise APIValueError('summary', 'summary cannot be empty!')
+	if not content:
+		raise APIValueError('content', 'content cannot be empty!')
+	# more valite rule here ....
+	user = ctx.request.user
+	blog = Blog(user_id=user.id, user_name=user.name, name=name, summary=summary, content=content)
+	blog.insert()
+	logging.info('New blog :%s ...' % name)
+	return blog
 
 @api
 @get('/api/users')

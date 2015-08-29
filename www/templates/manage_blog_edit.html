@@ -1,0 +1,91 @@
+{% extends '__base__.html' %}
+
+{% block title %}编辑日志{% endblock %}
+
+{% block beforehead %}
+	<script type="text/javascript">
+		var action = '{{ action }}';
+		var redirect = '{{ redirect }}';
+
+		var vm;
+
+		function initVue(blog) {
+		    var vm = new Vue({
+		        el: '#form-blog',
+		        data: blog,
+		        methods: {
+		            submit: function (event) {
+		                event.preventDefault();
+		                startLoading();
+		                postApi(action, this.$data, function (err, r) {
+		                    if (err) {
+		                        showError(err);
+		                    }
+		                    else {
+		                        return location.assign(redirect);
+		                    }
+		                    stopLoading();
+		                });
+		            },
+		            cancel: function() {
+		                location.assign(redirect);
+		            }
+		        }
+		    });
+		}
+		{% if id %}
+		$(function () {
+		    startLoading();
+		    getApi('/api/blogs/{{ id }}', function (err, blog) {
+		        if (err) {
+		            showError(err);
+		        }
+		        else {
+		            stopLoading();
+		            initVue(blog);
+		        }
+		    });
+		});
+		{% else %}
+		$(function () {
+		    initVue({
+		        name: '',
+		        summary: '',
+		        content: ''
+		    });
+		});
+		{% endif %}
+</script>
+	</script>
+{% endblock %}
+
+{% block content %}
+	<div class="uk-width-1-1">
+		<form id="form-bolg" v-on="submit: submit" class="uk-form uk-form-stacked">
+			<div class="uk-form-row">
+				<label class="uk-from-label">标题:</label>
+				<div class="uk-form-controls">
+					<input v-model="name" placeholder="标题" class="uk-width-1-1"/>
+				</div>
+			</div>
+			<div class="uk-form-row">
+				<label class="uk-from-label">摘要:</label>
+				<div class="uk-form-controls">
+					<textarea v-model="summary" placeholder="摘要"  rows="4" class="uk-width-1-1"></textarea>
+				</div>
+			</div>
+			<div class="uk-form-row">
+				<label class="uk-from-label">内容:</label>
+				<div class="uk-form-controls">
+					<textarea v-model="content" placeholder="内容"  rows="8" class="uk-width-1-1"></textarea>
+				</div>
+			</div>
+			<div class="uk-form-row">
+				<div class="uk-form-controls">
+					<button type="submit" class="uk-button uk-button-primary"/>提交</button>
+				</div>
+			</div>
+		</form>
+	</div>
+{% endblock %}
+
