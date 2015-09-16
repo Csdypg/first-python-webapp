@@ -11,7 +11,7 @@ import hashlib
 import logging
 from transwarp.web import get, post, ctx, view, interceptor, seeother, notfound
 from models import User, Blog, Comment
-from apis import api, APIError, APIValueError, APIPermissionError, APIResourceNotFoundError,Page
+from apis import api, APIError, APIValueError, APIPermissionError, APIResourceNotFoundError, Page
 from config import configs
 
 _COOKIE_NAME = 'awesession'
